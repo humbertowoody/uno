@@ -168,7 +168,7 @@ void takeCard(Player *, Deck *, Deck *);
  * Si es válido regresa 1.
  * En caso contrario, 0.
  */
-int validPlay(Card, Card);
+int validPlay(Card, Card, int);
 
 /**
  * Avanzar Turno
@@ -177,6 +177,14 @@ int validPlay(Card, Card);
  * el número máximo de jugadores y el sentido del juego.
  */
 void anotherTurn(int *, int, int);
+
+/**
+ * Hay Ganador.
+ *
+ * Esta función checa el número de cartas en el mazo del jugador para determinar
+ * si ganó.
+ */
+int isWinner(Player);
 
 /**
  * Main
@@ -191,6 +199,7 @@ int main(int argc, char const *argv[])
   int ronda = 0;                  // La ronda actual del juego.
   int winner = 0;                 // Si hay un ganador.
   int sentido = 1;                // El sentido de rotación de jugadores, 1 ascendente, -1 descendente.
+  int newChoice = 0;              // Si hay un cambio de color, esta variable almacenará el nuevo color.
 
   // Inicializar los mazos con su tamaño inicial (0).
   pile_game.noCards = 0;
@@ -287,6 +296,34 @@ int main(int argc, char const *argv[])
       takeCard(&players[currPlayer], &pile_remaining, &pile_game);
       takeCard(&players[currPlayer], &pile_remaining, &pile_game);
     }
+    else if (pile_game.cards[pile_game.noCards - 1].value == 14)
+    {
+      // Si es la primera ronda y salió un comodín de Cambio de Color.
+      if (ronda == 0)
+      {
+        // Default a rojo.
+        newChoice = 1;
+      }
+      // Informar al jugador del color seleccionado.
+      printf("¡Se ha tirado un cambio de color!\n");
+      printf("El color seleccionado es el ");
+      switch (newChoice)
+      {
+      case 1:
+        printf("Rojo.\n");
+        break;
+      case 2:
+        printf("Amarillo.\n");
+        break;
+      case 3:
+        printf("Verde.\n");
+        break;
+      default:
+        printf("Azul.\n");
+        break;
+      }
+      printf("Recuerda que podrás tirar cualquier carta que sea del color indicado.\n");
+    }
 
     printf("Tu Mazo:\n");
     printDeck(players[currPlayer].deck);
@@ -311,7 +348,7 @@ int main(int argc, char const *argv[])
         } while (pickedCard < 0 || pickedCard > players[currPlayer].deck.noCards - 1);
 
         // Checar si es válido
-        if (!validPlay(pile_game.cards[pile_game.noCards - 1], players[currPlayer].deck.cards[pickedCard]))
+        if (!validPlay(pile_game.cards[pile_game.noCards - 1], players[currPlayer].deck.cards[pickedCard], newChoice))
         {
           int menu2;
           do
@@ -330,7 +367,7 @@ int main(int argc, char const *argv[])
             menu1 = 2;
           }
         }
-      } while (menu1 == 1 && !validPlay(pile_game.cards[pile_game.noCards - 1], players[currPlayer].deck.cards[pickedCard]));
+      } while (menu1 == 1 && !validPlay(pile_game.cards[pile_game.noCards - 1], players[currPlayer].deck.cards[pickedCard], newChoice));
 
       // Tiró una carta válida.
       if (menu1 == 1)
@@ -346,35 +383,31 @@ int main(int argc, char const *argv[])
             break;
           case 11: // No Juega
             printf("¡Se ha saltado el turno del siguiente jugador!\n");
-            anotherTurn(&currPlayer, noPlayers, sentido);
             break;
           case 12: // Toma 2
             printf("¡Se ha aplicado correctamente el Toma Dos!\n");
             break;
-          case 13: // Toma 4 con Cambio de Color
+          case 13: // Toma 4
             printf("¡Se ha aplicado correctamente el Toma Cuatro!\n");
             break;
           default: // Cambio de Color
-            int newChoice;
-            // Por motivos de simplificación, cambiar el color se limita a usar una carta de un solo color.
+            // Se selecciona el nuevo color para el siguiente turno.
             do
             {
-              printf("Ahora puedes cambiar el color del juego, para esto, selecciona una carta de tu Mazo que tenga el color que deseas:\n");
-              printf("(Ùnicamente podrás tirar cartas numéricas para simplificar el juego)\n");
+              printf("Ahora puedes cambiar el color del juego, para esto, selecciona el color que deseas:\n");
+              printf("\t1) Rojo.\n");
+              printf("\t2) Amarillo.\n");
+              printf("\t3) Verde.\n");
+              printf("\t4) Azul.\n");
               printf("> ");
               scanf(" %i", &newChoice);
-            } while (newChoice < 0 || newChoice > players[currPlayer].deck.noCards - 1 || players[currPlayer].deck.cards[newChoice].value > 9);
-            // Sacar las cartas seleccionadas del mazo del jugador y ponerlas en el juego.
-            pushC(&pile_game, popAtPos(&players[currPlayer].deck, pickedCard));
-            pushC(&pile_game, popAtPos(&players[currPlayer].deck, newChoice));
+            } while (newChoice < 1 || newChoice > 4);
+            printf("¡Perfecto! El siguiente turno, el juego seguirá con el color %s.\n", card_color[newChoice - 1]);
             break;
           }
         }
-        else
-        {
-          // Sacar carta de mazo de jugador y ponerla en el juego.
-          pushC(&pile_game, popAtPos(&players[currPlayer].deck, pickedCard));
-        }
+        // Sacar carta de mazo de jugador y ponerla en el juego.
+        pushC(&pile_game, popAtPos(&players[currPlayer].deck, pickedCard));
       }
     }
 
@@ -404,20 +437,26 @@ int main(int argc, char const *argv[])
 
     // Mensaje de fin de turno.
     printf("Fin del turno de %s.\n\n", players[currPlayer].name);
-
     // Si no hay ganador, avanzar el juego.
-    if (!winner)
+    if (!isWinner(players[currPlayer]))
     {
+      // Avance normal.
       anotherTurn(&currPlayer, noPlayers, sentido);
+
+      // Validar si tiró carta de No Juega y, de ser necesario, avanzar otro turno.
+      if (pile_game.cards[pile_game.noCards - 1].value == 11)
+      {
+        anotherTurn(&currPlayer, noPlayers, sentido);
+      }
     }
     ronda++;
-  } while (!winner);
+  } while (!isWinner(players[currPlayer]));
 
   // Anunciar Ganador
   printWinner(players[currPlayer]);
 
   // Despedida
-  printf("Gracias por jugar UNO.\n¡Esperamos verte pronto!\n");
+  printf("Gracias por jugar UNO.\n¡Esperamos verl@s pronto!\n");
   return 0;
 }
 
@@ -604,16 +643,29 @@ void takeCard(Player *p, Deck *r, Deck *game)
 /**
  * Jugada Válida.
  */
-int validPlay(Card a, Card b)
+int validPlay(Card prev, Card new, int newChoice)
 {
   // Mismo color.
-  if (a.color == b.color)
+  if (prev.color == new.color)
+  {
+    return 1;
+  }
+
+  // Mismo número
+  if (prev.value == new.value)
   {
     return 1;
   }
 
   // Comodín Cambio de Color
-  if (b.value == 13 || b.value == 14)
+  if (new.value == 14)
+  {
+    return 1;
+  }
+
+  // Anterior fue comodín de Cambio de Color y la nueva
+  // tarjeta tiene el color que se eligió.
+  if (prev.value == 14 && new.color == (newChoice - 1))
   {
     return 1;
   }
@@ -641,4 +693,16 @@ void anotherTurn(int *curr, int players, int sentido)
   {
     *curr += sentido;
   }
+}
+
+/**
+ * Hay Ganador.
+ */
+int isWinner(Player p)
+{
+  if (p.deck.noCards <= 0)
+  {
+    return 1;
+  }
+  return 0;
 }

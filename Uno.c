@@ -223,7 +223,7 @@ int main(int argc, char const *argv[])
   }
 
   // Saludar a los jugadores e indicar número de jugador.
-  printf("¡Perfecto! Bienvenidos:\n");
+  printf("¡Perfecto! Bienvenid@s:\n");
   for (int i = 0; i < noPlayers; i++)
   {
     printf("\tJugador %i - %s\n", i + 1, players[i].name);
@@ -355,14 +355,26 @@ int main(int argc, char const *argv[])
             printf("¡Se ha aplicado correctamente el Toma Cuatro!\n");
             break;
           default: // Cambio de Color
-            printf("Ahora puedes cambiar el color del juego, para esto, selecciona una carta de tu Mazo que tenga el color que deseas:\n");
-
+            int newChoice;
+            // Por motivos de simplificación, cambiar el color se limita a usar una carta de un solo color.
+            do
+            {
+              printf("Ahora puedes cambiar el color del juego, para esto, selecciona una carta de tu Mazo que tenga el color que deseas:\n");
+              printf("(Ùnicamente podrás tirar cartas numéricas para simplificar el juego)\n");
+              printf("> ");
+              scanf(" %i", &newChoice);
+            } while (newChoice < 0 || newChoice > players[currPlayer].deck.noCards - 1 || players[currPlayer].deck.cards[newChoice].value > 9);
+            // Sacar las cartas seleccionadas del mazo del jugador y ponerlas en el juego.
+            pushC(&pile_game, popAtPos(&players[currPlayer].deck, pickedCard));
+            pushC(&pile_game, popAtPos(&players[currPlayer].deck, newChoice));
             break;
           }
         }
-
-        // Sacar carta de mazo de jugador y ponerla en el juego.
-        pushC(&pile_game, popAtPos(&players[currPlayer].deck, pickedCard));
+        else
+        {
+          // Sacar carta de mazo de jugador y ponerla en el juego.
+          pushC(&pile_game, popAtPos(&players[currPlayer].deck, pickedCard));
+        }
       }
     }
 

@@ -11,6 +11,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 /**
  * Constantes
@@ -73,7 +74,7 @@ typedef struct deck
 typedef struct player
 {
   int score; // Puntaje del jugador.
-  Deck cards;
+  Deck deck; // Mazo del jugador.
 } Player;
 
 // Funciones de utilidades.
@@ -83,7 +84,7 @@ typedef struct player
  *
  * Intercambia dos cartas en diferentes posiciones de memoria.
  */
-void swapC(Card *, Card *);
+void swapCard(Card *, Card *);
 
 // Funciones de Estructuras.
 
@@ -97,17 +98,20 @@ void pushC(Deck *d, Card);
  *
  * Saca una carta del Mazo en la posición indicada.
  */
-void popAtPos(Deck *, int);
+Card popAtPos(Deck *, int);
 
 /**
  * Sacar primer Carta del Mazo.
  *
  * Saca la primera carta de un Mazo.
  */
-void popC(Deck *);
+Card popC(Deck *);
 
 /**
  * Revolver un Mazo
+ *
+ * Se utiliza el algorimto de Yates-Fisher:
+ * https://es.wikipedia.org/wiki/Algoritmo_de_Fisher-Yates
  */
 void shuffle(Deck *deck);
 
@@ -171,11 +175,20 @@ int main(int argc, char const *argv[])
 
   // Inicializar el Juego
   initDeck(&pile_remaining);
-  printDeck(pile_remaining);
 
   // Revolver el mazo.
+  shuffle(&pile_remaining);
 
   // Repartir las cartas. (7 para cada jugador)
+  for (int i = 0; i < noPlayers; i++)
+  {
+    for (int j = 0; j < 7; j++)
+    {
+      pushC(&players[i].deck, popC(&pile_remaining));
+    }
+    printf("Jugador %i:\n", i);
+    printDeck(players[i].deck);
+  }
 
   // Sacar carta inicial.
 
@@ -248,6 +261,65 @@ void printDeck(Deck a)
     printf("\n");
   }
   printf("\n");
+}
+
+// Funciones de utilidades.
+
+/**
+ * Intercambiar dos cartas.
+ */
+void swapCard(Card *a, Card *b)
+{
+  Card temp = *a;
+  *a = *b;
+  *b = temp;
+}
+
+// Funciones de estructuras.
+
+/**
+ * Extraer una carta del Mazo.
+ */
+Card popAtPos(Deck *a, int pos)
+{
+  // TODO: validar posicion
+  Card temp = a->cards[pos];
+  for (int i = pos; i < (a->noCards - 1); i++)
+  {
+    a->cards[i] = a->cards[i + 1];
+  }
+  a->noCards--;
+  return temp;
+}
+
+/**
+ * Sacar primer Carta del Mazo.
+ *
+ * Saca la primera carta de un Mazo.
+ */
+Card popC(Deck *a)
+{
+  return popAtPos(a, 0);
+}
+
+/**
+ * Revolver un Mazo.
+ */
+void shuffle(Deck *a)
+{
+  int j; // Variable que tendrá el índice aleatorio para intercambiar cartas.
+  // Inicializar semilla de random.
+  srand(time(NULL));
+
+  // Revolver usando algoritmo de Fisher-Yates
+  // https://es.wikipedia.org/wiki/Algoritmo_de_Fisher-Yates
+  for (int i = 0; i < a->noCards; i++)
+  {
+    // Elegir un número aleatorio entre 0 e `i`.
+    j = rand() % (i + 1);
+    // Intercambiar cartas.
+    swapCard(&a->cards[i], &a->cards[j]);
+  }
 }
 
 // Funciones de Lógica del Juego.
